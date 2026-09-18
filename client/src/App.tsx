@@ -3,7 +3,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { api } from './services/api';
-import { LocationData, SensorData, Incident, Alert, Road, EmergencyTeam, AnalyticsSummary } from './types';
+import { LocationData, SensorData, Incident, Alert, Road, EmergencyTeam, AnalyticsSummary, RiskPrediction } from './types';
 
 // Components
 import { Navbar } from './components/Navbar';
@@ -27,6 +27,8 @@ import { EmergencyResponsePage } from './pages/EmergencyResponsePage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
 import { UserManagementPage } from './pages/UserManagementPage';
 import { SystemArchitecturePage } from './pages/SystemArchitecturePage';
+import { DataIntegrationPage } from './pages/DataIntegrationPage';
+import { OfflineSyncPage } from './pages/OfflineSyncPage';
 
 const MainApp: React.FC = () => {
   const { user } = useAuth();
@@ -43,6 +45,31 @@ const MainApp: React.FC = () => {
   const [roads, setRoads] = useState<Road[]>([]);
   const [emergencyTeams, setEmergencyTeams] = useState<EmergencyTeam[]>([]);
   const [analytics, setAnalytics] = useState<AnalyticsSummary | null>(null);
+  const [predictions, setPredictions] = useState<RiskPrediction[]>([]);
+
+  // Offline Architecture State
+  const [isOnline, setIsOnline] = useState<boolean>(true);
+  const [offlineQueueCount, setOfflineQueueCount] = useState<number>(3);
+
+  // Periodic Live Sensor Telemetry Loop (Phase 1 & 2 real-time integration)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setSensors(prevSensors =>
+        prevSensors.map(s => {
+          if (s.status === 'Offline') return s;
+          const delta = (Math.random() - 0.48) * 1.5;
+          const newReading = Math.min(99, Math.max(15, Math.round((s.current_reading || 50) + delta)));
+          return {
+            ...s,
+            current_reading: newReading,
+            last_updated: 'Just now'
+          };
+        })
+      );
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   // Modals
   const [explainabilityLocation, setExplainabilityLocation] = useState<LocationData | null>(null);
@@ -95,6 +122,9 @@ const MainApp: React.FC = () => {
 
   const handleIncidentSubmitted = (newInc: Incident) => {
     setIncidents(prev => [newInc, ...prev]);
+    if (!isOnline) {
+      setOfflineQueueCount(prev => prev + 1);
+    }
   };
 
   // Render Page Content
@@ -145,11 +175,48 @@ const MainApp: React.FC = () => {
           />
         );
 
+      case 'data-integration':
+        return <DataIntegrationPage />;
+
+      case 'offline-sync':
+        return (
+          <OfflineSyncPage
+            isOnline={isOnline}
+            onToggleOnline={() => setIsOnline(!isOnline)}
+            onNavigate={p => setCurrentPage(p)}
+          />
+        );
+
       case 'ai-predictions':
         return (
           <AIPredictionsPage
-            predictions={[]}
-            onPredictionAdded={() => {}}
+            predictions={predictions}
+            onPredictionAdded={pred => {
+              setPredictions(prev => [pred, ...prev]);
+              setLocations(prev => [
+                {
+                  id: pred.location_id,
+                  name: pred.location_name,
+                  district: pred.district,
+                  state: pred.state,
+                  latitude: 27.58 + (Math.random() - 0.5) * 0.3,
+                  longitude: 91.86 + (Math.random() - 0.5) * 0.3,
+                  elevation: pred.elevation,
+                  slope_angle: pred.slope_angle,
+                  soil_type: 'Fragile Moraine / Regolith',
+                  risk_level: pred.risk_category,
+                  risk_score: pred.risk_score,
+                  rainfall_24h: pred.cumulative_rainfall_24h,
+                  soil_moisture_pct: pred.soil_moisture,
+                  population_at_risk: 14200,
+                  historical_incidents: 16,
+                  last_updated: 'Just now',
+                  why_at_risk: pred.contributing_factors,
+                  recommended_action: pred.recommended_action
+                },
+                ...prev
+              ]);
+            }}
           />
         );
 
@@ -174,6 +241,7 @@ const MainApp: React.FC = () => {
           <IncidentReportingPage
             onIncidentSubmitted={handleIncidentSubmitted}
             onNavigateToManagement={() => setCurrentPage('incident-management')}
+            isOnlineMode={isOnline}
           />
         );
 
@@ -267,6 +335,9 @@ const MainApp: React.FC = () => {
         alerts={alerts}
         onOpenAlerts={() => setCurrentPage('alerts')}
         onNavigate={p => setCurrentPage(p)}
+        isOnline={isOnline}
+        onToggleOnline={() => setIsOnline(!isOnline)}
+        offlineCount={offlineQueueCount}
       />
 
       <div className="flex-1 flex overflow-hidden">

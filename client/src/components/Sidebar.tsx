@@ -43,8 +43,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const navItems = [
     { id: 'dashboard', label: t('dashboard'), icon: LayoutDashboard, badge: null },
-    { id: 'live-map', label: t('liveMap'), icon: Map, badge: 'LIVE' },
+    { id: 'live-map', label: t('liveMap'), icon: Map, badge: '9 LYR' },
+    { id: 'data-integration', label: 'Data Integration Center', icon: Network, badge: '6 SRC', badgeColor: 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40' },
     { id: 'ai-predictions', label: t('aiPredictions'), icon: Cpu, badge: '94%' },
+    { id: 'offline-sync', label: 'Offline Sync Queue', icon: AlertOctagon, badge: 'OFFLINE', badgeColor: 'bg-amber-500/20 text-amber-300 border border-amber-500/40' },
     { id: 'weather', label: t('rainfallWeather'), icon: CloudRain, badge: null },
     { id: 'sensors', label: t('sensorMonitoring'), icon: Activity, badge: '1.2k' },
     { id: 'incident-report', label: t('landslideReports'), icon: FilePlus2, badge: null },
@@ -53,7 +55,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'alerts', label: t('alerts'), icon: Bell, badge: activeAlertsCount > 0 ? String(activeAlertsCount) : null, badgeColor: 'bg-red-500' },
     { id: 'emergency-response', label: t('emergencyResponse'), icon: LifeBuoy, badge: 'NDRF' },
     { id: 'analytics', label: t('analytics'), icon: BarChart3, badge: null },
-    { id: 'architecture', label: t('architecture'), icon: Network, badge: null },
+    { id: 'architecture', label: t('architecture'), icon: ShieldCheck, badge: null },
     ...(user?.role === 'Super Admin' || user?.role === 'District Administration'
       ? [{ id: 'user-management', label: t('userManagement'), icon: Users, badge: null }]
       : []),

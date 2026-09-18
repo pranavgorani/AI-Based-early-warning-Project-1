@@ -9,7 +9,11 @@ import {
   MapPin,
   AlertTriangle,
   Eye,
-  Sliders
+  Sliders,
+  Home,
+  Building,
+  History,
+  Users
 } from 'lucide-react';
 
 interface LeafletMapProps {
@@ -20,6 +24,7 @@ interface LeafletMapProps {
   selectedLocation?: LocationData | null;
   onSelectLocation?: (loc: LocationData) => void;
   onOpenExplainability?: (loc: LocationData) => void;
+  onOpenBroadcast?: (loc: LocationData) => void;
   height?: string;
 }
 
@@ -31,29 +36,42 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
   selectedLocation,
   onSelectLocation,
   onOpenExplainability,
+  onOpenBroadcast,
   height = '600px'
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
+
+  // 9 Toggleable GIS Layer Groups
   const layerGroupsRef = useRef<{
     heatLayer: L.LayerGroup;
     locationsLayer: L.LayerGroup;
+    rainfallLayer: L.LayerGroup;
     sensorsLayer: L.LayerGroup;
-    incidentsLayer: L.LayerGroup;
     roadsLayer: L.LayerGroup;
+    villagesLayer: L.LayerGroup;
+    infrastructureLayer: L.LayerGroup;
+    historyLayer: L.LayerGroup;
+    citizenLayer: L.LayerGroup;
     sheltersLayer: L.LayerGroup;
   } | null>(null);
 
   const [mapTile, setMapTile] = useState<'dark' | 'satellite' | 'topo'>('dark');
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // 9 Layer Toggles (All 9 layers from Phase 3)
   const [showHeatmap, setShowHeatmap] = useState(true);
+  const [showRainfall, setShowRainfall] = useState(true);
   const [showSensors, setShowSensors] = useState(true);
-  const [showIncidents, setShowIncidents] = useState(true);
   const [showRoads, setShowRoads] = useState(true);
+  const [showVillages, setShowVillages] = useState(true);
+  const [showInfrastructure, setShowInfrastructure] = useState(true);
+  const [showHistory, setShowHistory] = useState(true);
+  const [showCitizenReports, setShowCitizenReports] = useState(true);
   const [showShelters, setShowShelters] = useState(true);
   const [isLayerMenuOpen, setIsLayerMenuOpen] = useState(false);
 
-  // Initialize Map
+  // Initialize Leaflet Map
   useEffect(() => {
     if (!mapContainerRef.current || mapInstanceRef.current) return;
 
@@ -67,20 +85,28 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
 
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-    // Layer groups for toggling
+    // Initialize the 9 layers
     const heatLayer = L.layerGroup().addTo(map);
     const locationsLayer = L.layerGroup().addTo(map);
+    const rainfallLayer = L.layerGroup().addTo(map);
     const sensorsLayer = L.layerGroup().addTo(map);
-    const incidentsLayer = L.layerGroup().addTo(map);
     const roadsLayer = L.layerGroup().addTo(map);
+    const villagesLayer = L.layerGroup().addTo(map);
+    const infrastructureLayer = L.layerGroup().addTo(map);
+    const historyLayer = L.layerGroup().addTo(map);
+    const citizenLayer = L.layerGroup().addTo(map);
     const sheltersLayer = L.layerGroup().addTo(map);
 
     layerGroupsRef.current = {
       heatLayer,
       locationsLayer,
+      rainfallLayer,
       sensorsLayer,
-      incidentsLayer,
       roadsLayer,
+      villagesLayer,
+      infrastructureLayer,
+      historyLayer,
+      citizenLayer,
       sheltersLayer
     };
 
@@ -97,7 +123,6 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
     const map = mapInstanceRef.current;
     if (!map) return;
 
-    // Remove existing tile layer
     map.eachLayer((l: any) => {
       if (l instanceof L.TileLayer) {
         map.removeLayer(l);
@@ -117,21 +142,25 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
     }).addTo(map);
   }, [mapTile]);
 
-  // Render Markers and Features
+  // Render Features & Markers across the 9 Layers
   useEffect(() => {
     const map = mapInstanceRef.current;
     const layers = layerGroupsRef.current;
     if (!map || !layers) return;
 
-    // Clear previous items
+    // Clear previous
     layers.heatLayer.clearLayers();
     layers.locationsLayer.clearLayers();
+    layers.rainfallLayer.clearLayers();
     layers.sensorsLayer.clearLayers();
-    layers.incidentsLayer.clearLayers();
     layers.roadsLayer.clearLayers();
+    layers.villagesLayer.clearLayers();
+    layers.infrastructureLayer.clearLayers();
+    layers.historyLayer.clearLayers();
+    layers.citizenLayer.clearLayers();
     layers.sheltersLayer.clearLayers();
 
-    // 1. Locations & Risk Heat Zones
+    // 1. Landslide Risk Heatmap & Main Location Markers
     locations.forEach(loc => {
       const isCritical = loc.risk_score >= 76;
       const isHigh = loc.risk_score >= 51 && loc.risk_score < 76;
@@ -145,7 +174,6 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
         ? '#f59e0b'
         : '#10b981';
 
-      // Heat Circle / Risk Area Polygon
       if (showHeatmap) {
         const circleRadius = isCritical ? 24000 : isHigh ? 18000 : 12000;
         const circle = L.circle([loc.latitude, loc.longitude], {
@@ -159,12 +187,26 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
         circle.addTo(layers.heatLayer);
       }
 
-      // Location Marker Icon
+      // 2. Rainfall Intensity Isohyet circle
+      if (showRainfall) {
+        const rainRadius = Math.max(10000, loc.rainfall_24h * 150);
+        const rainCircle = L.circle([loc.latitude, loc.longitude], {
+          radius: rainRadius,
+          color: '#06b6d4',
+          fillColor: '#06b6d4',
+          fillOpacity: 0.12,
+          weight: 1,
+          dashArray: '3, 6'
+        });
+        rainCircle.addTo(layers.rainfallLayer);
+      }
+
+      // Rich Location Marker
       const markerHtml = `
         <div class="relative flex items-center justify-center cursor-pointer group">
-          ${isCritical ? '<div class="absolute w-8 h-8 rounded-full bg-red-500/40 animate-ping"></div>' : ''}
-          <div class="w-7 h-7 rounded-full flex items-center justify-center text-white shadow-xl border-2 border-white/80" style="background-color: ${fillColor}">
-            <span class="text-[10px] font-black">${loc.risk_score}</span>
+          ${isCritical ? '<div class="absolute w-8 h-8 rounded-full bg-red-500/50 animate-ping"></div>' : ''}
+          <div class="w-7 h-7 rounded-full flex items-center justify-center text-white shadow-xl border-2 border-white/90 font-black text-[10px]" style="background-color: ${fillColor}">
+            ${loc.risk_score}
           </div>
         </div>
       `;
@@ -178,54 +220,65 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
 
       const marker = L.marker([loc.latitude, loc.longitude], { icon: customIcon });
 
-      // Rich Popup
       const popupHtml = `
         <div class="p-3.5 text-xs text-slate-100 font-sans max-w-[280px]">
-          <div class="flex items-center justify-between gap-2 mb-1.5">
+          <div class="flex items-center justify-between gap-2 mb-1">
             <span class="font-bold text-sm text-white">${loc.name}</span>
             <span class="px-2 py-0.5 rounded text-[10px] font-bold" style="background:${fillColor}33; color:${fillColor}; border:1px solid ${fillColor}66;">
               ${loc.risk_level}
             </span>
           </div>
           <p class="text-[11px] text-slate-400 mb-2">${loc.district}, ${loc.state}</p>
-          
-          <div class="grid grid-cols-2 gap-2 py-2 border-t border-b border-slate-700/60 my-2">
+
+          <div class="grid grid-cols-2 gap-2 py-2 border-t border-b border-slate-700/60 my-2 font-mono">
             <div>
-              <span class="text-slate-400 block text-[10px]">24h Rainfall</span>
+              <span class="text-slate-400 block text-[9px] font-sans">Rainfall</span>
               <strong class="text-cyan-300 font-bold">${loc.rainfall_24h} mm</strong>
             </div>
             <div>
-              <span class="text-slate-400 block text-[10px]">Soil Moisture</span>
+              <span class="text-slate-400 block text-[9px] font-sans">Soil Moisture</span>
               <strong class="text-amber-300 font-bold">${loc.soil_moisture_pct}%</strong>
             </div>
             <div>
-              <span class="text-slate-400 block text-[10px]">Slope Angle</span>
+              <span class="text-slate-400 block text-[9px] font-sans">Slope Angle</span>
               <strong class="text-slate-200 font-bold">${loc.slope_angle}°</strong>
             </div>
             <div>
-              <span class="text-slate-400 block text-[10px]">AI Failure Prob.</span>
+              <span class="text-slate-400 block text-[9px] font-sans">AI Prediction</span>
               <strong class="text-red-400 font-bold">${Math.min(99, Math.round(loc.risk_score * 0.95 + 4))}%</strong>
             </div>
           </div>
 
+          <div class="flex items-center justify-between text-[10px] text-slate-400 mb-3">
+            <span>Last Updated: <strong class="text-slate-200">${loc.last_updated}</strong></span>
+            <span class="text-emerald-400 font-semibold">Live Feed</span>
+          </div>
+
           <p class="text-[11px] text-slate-300 mb-3 line-clamp-2">
-            <strong>Action:</strong> ${loc.recommended_action || 'Inspect slope drainage and monitor telemetry.'}
+            <strong>Action:</strong> ${loc.recommended_action || 'Continuous telemetry monitoring.'}
           </p>
 
-          <button id="btn-explain-${loc.id}" class="w-full py-1.5 px-2.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-[11px] flex items-center justify-center gap-1.5 transition-colors shadow">
-            <span>Why This Area Is at Risk (XAI)</span>
-          </button>
+          <div class="grid grid-cols-2 gap-1.5">
+            <button id="btn-explain-${loc.id}" class="py-1.5 px-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-[10px] transition-colors shadow flex items-center justify-center gap-1">
+              <span>Why at Risk (XAI)</span>
+            </button>
+            <button id="btn-broadcast-${loc.id}" class="py-1.5 px-2 rounded-lg bg-red-600 hover:bg-red-500 text-white font-bold text-[10px] transition-colors shadow flex items-center justify-center gap-1">
+              <span>Broadcast Alert</span>
+            </button>
+          </div>
         </div>
       `;
 
       marker.bindPopup(popupHtml);
 
       marker.on('popupopen', () => {
-        const btn = document.getElementById(`btn-explain-${loc.id}`);
-        if (btn) {
-          btn.onclick = () => {
-            if (onOpenExplainability) onOpenExplainability(loc);
-          };
+        const btnExplain = document.getElementById(`btn-explain-${loc.id}`);
+        if (btnExplain && onOpenExplainability) {
+          btnExplain.onclick = () => onOpenExplainability(loc);
+        }
+        const btnBroadcast = document.getElementById(`btn-broadcast-${loc.id}`);
+        if (btnBroadcast && onOpenBroadcast) {
+          btnBroadcast.onclick = () => onOpenBroadcast(loc);
         }
       });
 
@@ -236,12 +289,12 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
       marker.addTo(layers.locationsLayer);
     });
 
-    // 2. Active Sensors Markers
+    // 3. IoT Soil Moisture Sensors Layer
     if (showSensors) {
       sensors.forEach(s => {
         const isOnline = s.status === 'Online';
         const sensorHtml = `
-          <div class="w-5 h-5 rounded-full bg-cyan-950 border border-cyan-400 flex items-center justify-center text-[9px] text-cyan-300 shadow" title="${s.sensor_type} (${s.id})">
+          <div class="w-5 h-5 rounded-full bg-cyan-950 border border-cyan-400 flex items-center justify-center text-[9px] text-cyan-300 shadow">
             <span class="w-2 h-2 rounded-full ${isOnline ? 'bg-cyan-400' : 'bg-red-400'}"></span>
           </div>
         `;
@@ -254,7 +307,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
         const m = L.marker([s.latitude, s.longitude], { icon });
         m.bindPopup(`
           <div class="p-3 text-xs text-slate-100 font-sans">
-            <div class="font-bold text-cyan-400">${s.id}</div>
+            <div class="font-bold text-cyan-400">${s.id} (IoT Sensor)</div>
             <div class="text-[11px] text-slate-300">${s.sensor_type}</div>
             <div class="text-[10px] text-slate-400">${s.location_name}</div>
             <div class="mt-2 text-white font-semibold">Reading: ${s.current_reading} ${s.unit}</div>
@@ -265,38 +318,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
       });
     }
 
-    // 3. Active Incidents Markers
-    if (showIncidents) {
-      incidents.forEach(inc => {
-        const incHtml = `
-          <div class="relative w-6 h-6 flex items-center justify-center">
-            <span class="absolute w-6 h-6 rounded-full bg-red-600/60 animate-ping"></span>
-            <div class="w-5 h-5 rounded-md bg-red-600 text-white flex items-center justify-center shadow font-bold text-[10px] border border-white">
-              !
-            </div>
-          </div>
-        `;
-        const icon = L.divIcon({
-          html: incHtml,
-          className: 'incident-marker',
-          iconSize: [24, 24],
-          iconAnchor: [12, 12]
-        });
-        const m = L.marker([inc.latitude, inc.longitude], { icon });
-        m.bindPopup(`
-          <div class="p-3 text-xs text-slate-100 font-sans max-w-[240px]">
-            <span class="px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 text-[10px] font-bold">${inc.severity} Severity</span>
-            <h4 class="font-bold text-white text-xs mt-1">${inc.title}</h4>
-            <p class="text-[11px] text-slate-300 mt-1">${inc.location}</p>
-            <p class="text-[10px] text-amber-300 mt-1 font-semibold">Road: ${inc.road_status} | People: ${inc.people_affected}</p>
-            <p class="text-[10px] text-slate-400 mt-1">Status: ${inc.status}</p>
-          </div>
-        `);
-        m.addTo(layers.incidentsLayer);
-      });
-    }
-
-    // 4. Blocked / Vulnerable Roads
+    // 4. Vulnerable Roads Layer
     if (showRoads) {
       const roadCoordinates: Record<string, [number, number][]> = {
         'rd-1': [[27.0, 92.5], [27.3, 92.2], [27.58, 91.86]], // NH-13 Sela Tawang
@@ -328,7 +350,121 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
       });
     }
 
-    // 5. Emergency Shelters & Hospitals
+    // 5. Villages & Habitations Layer
+    if (showVillages) {
+      const villages = [
+        { name: 'Khandro Village', lat: 27.60, lng: 91.90, pop: 1200 },
+        { name: 'Nongriat Living Root Hamlet', lat: 25.25, lng: 91.67, pop: 640 },
+        { name: 'Dikchu Basti', lat: 27.42, lng: 88.55, pop: 1800 },
+        { name: 'Mahur Hill Village', lat: 25.17, lng: 93.12, pop: 2200 }
+      ];
+      villages.forEach(v => {
+        const vHtml = `
+          <div class="w-4 h-4 rounded-full bg-indigo-600 border border-indigo-300 flex items-center justify-center text-[8px] text-white font-bold shadow" title="${v.name}">
+            V
+          </div>
+        `;
+        const icon = L.divIcon({ html: vHtml, className: 'village-marker', iconSize: [16, 16], iconAnchor: [8, 8] });
+        const m = L.marker([v.lat, v.lng], { icon });
+        m.bindPopup(`
+          <div class="p-2 text-xs text-slate-100 font-sans">
+            <strong class="text-indigo-400">${v.name} (Habitation)</strong>
+            <p class="text-[10px] text-slate-300 mt-1">Population: ${v.pop} residents</p>
+            <p class="text-[10px] text-amber-300">Evacuation Distance: 2.4 km</p>
+          </div>
+        `);
+        m.addTo(layers.villagesLayer);
+      });
+    }
+
+    // 6. Infrastructure Layer (Bridges, Dams, Power, Tunnels)
+    if (showInfrastructure) {
+      const infra = [
+        { name: 'Sela Tunnel South Portal', lat: 27.50, lng: 92.10, type: 'Strategic Tunnel' },
+        { name: 'Teesta Stage-V Dam Barrage', lat: 27.18, lng: 88.51, type: 'Hydro Dam' },
+        { name: 'Umiam Power Substation', lat: 25.65, lng: 91.90, type: 'Substation' }
+      ];
+      infra.forEach(inf => {
+        const infHtml = `
+          <div class="w-5 h-5 rounded bg-blue-700 border border-white flex items-center justify-center text-[9px] text-white font-bold shadow" title="${inf.name}">
+            ⚙
+          </div>
+        `;
+        const icon = L.divIcon({ html: infHtml, className: 'infra-marker', iconSize: [20, 20], iconAnchor: [10, 10] });
+        const m = L.marker([inf.lat, inf.lng], { icon });
+        m.bindPopup(`
+          <div class="p-2 text-xs text-slate-100 font-sans">
+            <strong class="text-blue-300">${inf.name}</strong>
+            <p class="text-[10px] text-slate-300 mt-1">Classification: ${inf.type}</p>
+            <p class="text-[10px] text-emerald-400">Critical Infrastructure Asset</p>
+          </div>
+        `);
+        m.addTo(layers.infrastructureLayer);
+      });
+    }
+
+    // 7. Historical Incidents Layer
+    if (showHistory) {
+      const pastSlides = [
+        { name: '2020 Sela Debris Flow', lat: 27.52, lng: 92.05, year: '2020', impact: 'Road cut off for 6 days' },
+        { name: '2022 Haflong Railway Subsidence', lat: 25.18, lng: 93.01, year: '2022', impact: 'Lumding line breached' },
+        { name: '2023 Chungthang Glacial Outburst', lat: 27.60, lng: 88.65, year: '2023', impact: 'Flash flood & scarp failure' }
+      ];
+      pastSlides.forEach(p => {
+        const histHtml = `
+          <div class="w-4 h-4 rounded-full bg-slate-700 border border-amber-400 flex items-center justify-center text-[8px] text-amber-300 font-bold shadow" title="${p.name}">
+            H
+          </div>
+        `;
+        const icon = L.divIcon({ html: histHtml, className: 'hist-marker', iconSize: [16, 16], iconAnchor: [8, 8] });
+        const m = L.marker([p.lat, p.lng], { icon });
+        m.bindPopup(`
+          <div class="p-2 text-xs text-slate-100 font-sans">
+            <strong class="text-amber-400">${p.name}</strong>
+            <p class="text-[10px] text-slate-300 mt-1">Year: ${p.year}</p>
+            <p class="text-[10px] text-slate-400">${p.impact}</p>
+          </div>
+        `);
+        m.addTo(layers.historyLayer);
+      });
+    }
+
+    // 8. Citizen & Field Reports Layer
+    if (showCitizenReports) {
+      incidents.forEach(inc => {
+        const isVerified = inc.status === 'Verified' || inc.status === 'Response Initiated';
+        const incHtml = `
+          <div class="relative w-6 h-6 flex items-center justify-center">
+            <span class="absolute w-6 h-6 rounded-full bg-red-600/60 animate-ping"></span>
+            <div class="w-5 h-5 rounded-md ${isVerified ? 'bg-red-600' : 'bg-amber-600'} text-white flex items-center justify-center shadow font-bold text-[10px] border border-white">
+              !
+            </div>
+          </div>
+        `;
+        const icon = L.divIcon({
+          html: incHtml,
+          className: 'incident-marker',
+          iconSize: [24, 24],
+          iconAnchor: [12, 12]
+        });
+        const m = L.marker([inc.latitude, inc.longitude], { icon });
+        m.bindPopup(`
+          <div class="p-3 text-xs text-slate-100 font-sans max-w-[240px]">
+            <div class="flex items-center justify-between">
+              <span class="px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 text-[10px] font-bold">${inc.severity} Severity</span>
+              <span class="text-[9px] text-slate-400 font-mono">${inc.id}</span>
+            </div>
+            <h4 class="font-bold text-white text-xs mt-1.5">${inc.title}</h4>
+            <p class="text-[11px] text-slate-300 mt-1">${inc.location}</p>
+            <p class="text-[10px] text-amber-300 mt-1 font-semibold">Reported By: ${inc.reported_by} (${inc.reporter_role})</p>
+            <p class="text-[10px] text-slate-400 mt-1">Status: <strong class="text-cyan-300">${inc.status}</strong></p>
+          </div>
+        `);
+        m.addTo(layers.citizenLayer);
+      });
+    }
+
+    // 9. Emergency Shelters Layer
     if (showShelters) {
       const shelters = [
         { name: 'Tawang General Hospital & Relief Shelter', lat: 27.59, lng: 91.87, type: 'Hospital / Shelter' },
@@ -354,7 +490,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
           <div class="p-2 text-xs text-slate-100 font-sans">
             <strong class="text-emerald-400 font-bold">${sh.name}</strong>
             <div class="text-[10px] text-slate-300">${sh.type}</div>
-            <div class="text-[10px] text-slate-400 mt-1">Capacity: 450 beds | NDRF linked</div>
+            <div class="text-[10px] text-slate-400 mt-1">Capacity: 450 beds | NDRF / SDRF Linked</div>
           </div>
         `);
         m.addTo(layers.sheltersLayer);
@@ -366,11 +502,16 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
     incidents,
     roads,
     showHeatmap,
+    showRainfall,
     showSensors,
-    showIncidents,
     showRoads,
+    showVillages,
+    showInfrastructure,
+    showHistory,
+    showCitizenReports,
     showShelters,
     onOpenExplainability,
+    onOpenBroadcast,
     onSelectLocation
   ]);
 
@@ -392,10 +533,9 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
       }`}
       style={{ height: isFullscreen ? '100vh' : height }}
     >
-      {/* Map Container */}
       <div ref={mapContainerRef} className="w-full h-full" />
 
-      {/* Top Left Status & Title Overlay */}
+      {/* Top Left Status Overlay */}
       <div className="absolute top-4 left-4 z-10 flex flex-wrap items-center gap-2 pointer-events-auto">
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/90 backdrop-blur-md border border-slate-700 text-xs text-slate-200 shadow-lg">
           <span className="relative flex h-2.5 w-2.5">
@@ -404,12 +544,12 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
           </span>
           <span className="font-bold text-white tracking-wide">NER LIVE GIS COMMAND</span>
           <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-cyan-400 border border-slate-700 font-mono">
-            8 STATES
+            9 LAYERS ACTIVE
           </span>
         </div>
       </div>
 
-      {/* Top Right Map Controls */}
+      {/* Top Right Controls & 9-Layer Dropdown */}
       <div className="absolute top-4 right-4 z-10 flex items-center gap-2 pointer-events-auto">
         {/* Base Tile Toggle */}
         <div className="flex items-center bg-slate-900/90 backdrop-blur-md border border-slate-700 rounded-xl p-1 shadow-lg text-xs">
@@ -439,19 +579,23 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
           </button>
         </div>
 
-        {/* Layer Filters Menu */}
+        {/* 9 GIS Layers Filter Menu */}
         <div className="relative">
           <button
             onClick={() => setIsLayerMenuOpen(!isLayerMenuOpen)}
             className="p-2 rounded-xl bg-slate-900/90 backdrop-blur-md border border-slate-700 text-slate-200 hover:text-white shadow-lg transition-colors flex items-center gap-1.5 text-xs font-semibold"
           >
             <Layers className="w-4 h-4 text-cyan-400" />
-            <span className="hidden sm:inline">Layers</span>
+            <span className="hidden sm:inline">Layers (9)</span>
           </button>
 
           {isLayerMenuOpen && (
-            <div className="absolute right-0 mt-2 w-52 bg-slate-900/95 backdrop-blur-md border border-slate-700 rounded-xl shadow-2xl p-3 z-30 space-y-2 text-xs">
-              <div className="font-bold text-white border-b border-slate-800 pb-1.5">GIS Overlay Layers</div>
+            <div className="absolute right-0 mt-2 w-60 bg-slate-900/95 backdrop-blur-md border border-slate-700 rounded-xl shadow-2xl p-3 z-30 space-y-2 text-xs max-h-96 overflow-y-auto">
+              <div className="font-bold text-white border-b border-slate-800 pb-1.5 flex items-center justify-between">
+                <span>9 GIS Overlay Layers</span>
+                <span className="text-[10px] text-cyan-400 font-mono">Toggleable</span>
+              </div>
+
               <label className="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white">
                 <input
                   type="checkbox"
@@ -459,8 +603,19 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
                   onChange={e => setShowHeatmap(e.target.checked)}
                   className="rounded text-cyan-500 focus:ring-0 bg-slate-800"
                 />
-                <span>Risk Heatmap Zones</span>
+                <span>1. Landslide Risk Heatmap</span>
               </label>
+
+              <label className="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white">
+                <input
+                  type="checkbox"
+                  checked={showRainfall}
+                  onChange={e => setShowRainfall(e.target.checked)}
+                  className="rounded text-cyan-500 focus:ring-0 bg-slate-800"
+                />
+                <span>2. Rainfall Intensity Isohyets</span>
+              </label>
+
               <label className="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white">
                 <input
                   type="checkbox"
@@ -468,17 +623,9 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
                   onChange={e => setShowSensors(e.target.checked)}
                   className="rounded text-cyan-500 focus:ring-0 bg-slate-800"
                 />
-                <span>IoT Sensors</span>
+                <span>3. Soil Moisture Sensors</span>
               </label>
-              <label className="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white">
-                <input
-                  type="checkbox"
-                  checked={showIncidents}
-                  onChange={e => setShowIncidents(e.target.checked)}
-                  className="rounded text-cyan-500 focus:ring-0 bg-slate-800"
-                />
-                <span>Active Incidents</span>
-              </label>
+
               <label className="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white">
                 <input
                   type="checkbox"
@@ -486,8 +633,49 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
                   onChange={e => setShowRoads(e.target.checked)}
                   className="rounded text-cyan-500 focus:ring-0 bg-slate-800"
                 />
-                <span>Road Arteries (NH/SH)</span>
+                <span>4. Vulnerable Roads (NH/SH)</span>
               </label>
+
+              <label className="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white">
+                <input
+                  type="checkbox"
+                  checked={showVillages}
+                  onChange={e => setShowVillages(e.target.checked)}
+                  className="rounded text-cyan-500 focus:ring-0 bg-slate-800"
+                />
+                <span>5. Villages & Habitations</span>
+              </label>
+
+              <label className="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white">
+                <input
+                  type="checkbox"
+                  checked={showInfrastructure}
+                  onChange={e => setShowInfrastructure(e.target.checked)}
+                  className="rounded text-cyan-500 focus:ring-0 bg-slate-800"
+                />
+                <span>6. Infrastructure & Bridges</span>
+              </label>
+
+              <label className="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white">
+                <input
+                  type="checkbox"
+                  checked={showHistory}
+                  onChange={e => setShowHistory(e.target.checked)}
+                  className="rounded text-cyan-500 focus:ring-0 bg-slate-800"
+                />
+                <span>7. Historical Incidents</span>
+              </label>
+
+              <label className="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white">
+                <input
+                  type="checkbox"
+                  checked={showCitizenReports}
+                  onChange={e => setShowCitizenReports(e.target.checked)}
+                  className="rounded text-cyan-500 focus:ring-0 bg-slate-800"
+                />
+                <span>8. Citizen & Field Reports</span>
+              </label>
+
               <label className="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white">
                 <input
                   type="checkbox"
@@ -495,13 +683,13 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
                   onChange={e => setShowShelters(e.target.checked)}
                   className="rounded text-cyan-500 focus:ring-0 bg-slate-800"
                 />
-                <span>Hospitals & Shelters</span>
+                <span>9. Emergency Shelters</span>
               </label>
             </div>
           )}
         </div>
 
-        {/* Fullscreen Toggle */}
+        {/* Fullscreen Button */}
         <button
           onClick={() => setIsFullscreen(!isFullscreen)}
           className="p-2 rounded-xl bg-slate-900/90 backdrop-blur-md border border-slate-700 text-slate-200 hover:text-white shadow-lg transition-colors"

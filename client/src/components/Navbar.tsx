@@ -29,6 +29,9 @@ interface NavbarProps {
   alerts: Alert[];
   onOpenAlerts: () => void;
   onNavigate: (page: string) => void;
+  isOnline?: boolean;
+  onToggleOnline?: () => void;
+  offlineCount?: number;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -38,7 +41,10 @@ export const Navbar: React.FC<NavbarProps> = ({
   onSearchChange,
   alerts,
   onOpenAlerts,
-  onNavigate
+  onNavigate,
+  isOnline = true,
+  onToggleOnline,
+  offlineCount = 0
 }) => {
   const { user, logout, switchRole } = useAuth();
   const { language, setLanguage, t } = useLanguage();
@@ -148,11 +154,24 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Right Actions */}
         <div className="flex items-center gap-2">
-          {/* Online/Sync Status Indicator */}
-          <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-[11px] text-emerald-400 font-medium">
-            <Wifi className="w-3.5 h-3.5" />
-            <span>Telemetry Live</span>
-          </div>
+          {/* Online/Sync Status Indicator with Click Toggle */}
+          <button
+            onClick={onToggleOnline}
+            title={isOnline ? 'Click to simulate offline mode' : 'Click to reconnect online'}
+            className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold transition-all border ${
+              isOnline
+                ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/25'
+                : 'bg-red-500/20 border-red-500/50 text-red-300 hover:bg-red-500/30 animate-pulse'
+            }`}
+          >
+            {isOnline ? <Wifi className="w-3.5 h-3.5 text-emerald-400" /> : <WifiOff className="w-3.5 h-3.5 text-red-400" />}
+            <span>{isOnline ? 'ONLINE' : 'OFFLINE'}</span>
+            {offlineCount > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-slate-950 font-black text-[9px]">
+                {offlineCount} queued
+              </span>
+            )}
+          </button>
 
           {/* Language Switcher */}
           <div className="relative">
