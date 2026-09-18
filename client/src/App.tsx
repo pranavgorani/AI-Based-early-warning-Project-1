@@ -30,9 +30,100 @@ import { SystemArchitecturePage } from './pages/SystemArchitecturePage';
 import { DataIntegrationPage } from './pages/DataIntegrationPage';
 import { OfflineSyncPage } from './pages/OfflineSyncPage';
 
+// SPA Route to Page ID mapper
+const pathToPage = (pathname: string): string => {
+  const clean = pathname.replace(/^\/+|\/+$/g, '').toLowerCase();
+  switch (clean) {
+    case '':
+    case 'landing':
+    case 'home':
+      return 'landing';
+    case 'login':
+      return 'login';
+    case 'dashboard':
+    case 'command-center':
+      return 'dashboard';
+    case 'map':
+    case 'live-map':
+    case 'gis':
+      return 'live-map';
+    case 'data-integration':
+    case 'data':
+      return 'data-integration';
+    case 'ai-predictions':
+    case 'prediction':
+    case 'predictions':
+      return 'ai-predictions';
+    case 'offline-sync':
+    case 'sync':
+      return 'offline-sync';
+    case 'weather':
+    case 'rainfall':
+      return 'weather';
+    case 'sensors':
+    case 'sensor-monitoring':
+      return 'sensors';
+    case 'incidents':
+    case 'incident-management':
+      return 'incident-management';
+    case 'incident-report':
+    case 'report':
+      return 'incident-report';
+    case 'roads':
+    case 'road-connectivity':
+      return 'road-connectivity';
+    case 'alerts':
+    case 'alerts-center':
+      return 'alerts';
+    case 'emergency-response':
+    case 'emergency':
+      return 'emergency-response';
+    case 'analytics':
+      return 'analytics';
+    case 'users':
+    case 'settings':
+    case 'user-management':
+      return 'user-management';
+    case 'architecture':
+    case 'system-architecture':
+      return 'architecture';
+    default:
+      return 'landing';
+  }
+};
+
+const pageToPath = (page: string): string => {
+  if (page === 'landing') return '/';
+  return `/${page}`;
+};
+
 const MainApp: React.FC = () => {
   const { user } = useAuth();
-  const [currentPage, setCurrentPage] = useState<string>('landing');
+  const [currentPage, setCurrentPageState] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return pathToPage(window.location.pathname);
+    }
+    return 'landing';
+  });
+
+  const setCurrentPage = (page: string) => {
+    setCurrentPageState(page);
+    if (typeof window !== 'undefined') {
+      const targetPath = pageToPath(page);
+      if (window.location.pathname !== targetPath) {
+        window.history.pushState({ page }, '', targetPath);
+      }
+    }
+  };
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentPageState(pathToPage(window.location.pathname));
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   const [selectedState, setSelectedState] = useState<string>('All States');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);

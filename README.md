@@ -103,3 +103,26 @@ npm run dev
 ```
 
 Open your browser at **`http://localhost:3000`**.
+
+---
+
+## ⚡ Vercel Deployment Guide
+
+The project is fully configured for zero-configuration, production-ready deployment on **Vercel**:
+
+### Option 1: Direct GitHub Import (Recommended)
+1. In your [Vercel Dashboard](https://vercel.com/), click **"Add New Project"** and import `AI-Based-early-warning-Project-1`.
+2. Leave **Root Directory** as `./` (default).
+3. The root [`vercel.json`](file:///c:/Users/Pranav/OneDrive/Documents/AI-Based%20early%20warning%20Project%201/vercel.json) and root [`package.json`](file:///c:/Users/Pranav/OneDrive/Documents/AI-Based%20early%20warning%20Project%201/package.json) will automatically run `npm run build` and route static assets from `client/dist`.
+4. Click **Deploy**.
+
+### Option 2: Subfolder Configuration (Client Directory)
+If you configure the project to build directly from the `client` folder:
+- **Framework Preset**: `Vite`
+- **Root Directory**: `client`
+- **Build Command**: `npm run build`
+- **Output Directory**: `dist`
+- **Install Command**: `npm install`
+
+### SPA Routing & 404 Prevention
+Client-side routes (e.g. `/dashboard`, `/ai-predictions`, `/map`, `/alerts`, `/weather`, `/incidents`) are handled via `vercel.json` rewrites, ensuring all direct page loads and refreshes serve `/index.html` seamlessly without `404: NOT_FOUND` errors.
