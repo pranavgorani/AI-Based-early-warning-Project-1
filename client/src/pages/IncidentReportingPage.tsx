@@ -18,8 +18,12 @@ import {
   Clock,
   WifiOff,
   Radio,
-  FileCheck
+  FileCheck,
+  Sparkles,
+  Bot,
+  AlertOctagon
 } from 'lucide-react';
+import { geminiService, AITriageResult } from '../services/geminiService';
 
 interface IncidentReportingPageProps {
   onIncidentSubmitted: (inc: Incident) => void;
@@ -66,6 +70,29 @@ export const IncidentReportingPage: React.FC<IncidentReportingPageProps> = ({
     'Initial geotechnical assessment confirms active planar slip along 38° scarp cut. Road clearance earthmovers required immediately.'
   );
   const [verifiedByOfficer, setVerifiedByOfficer] = useState(true);
+  const [aiTriage, setAiTriage] = useState<AITriageResult | null>(null);
+  const [isAnalyzingTriage, setIsAnalyzingTriage] = useState(false);
+
+  const handleRunAiTriage = async () => {
+    setIsAnalyzingTriage(true);
+    try {
+      const res = await geminiService.analyzeIncidentTriage({
+        title,
+        description: description || 'Severe landslide and ground rupture observed on slope cut.',
+        location: location || 'Arterial Corridor',
+        district: district || 'East District',
+        state: state || 'Meghalaya',
+        reportedSeverity: severity,
+        casualtiesReported: peopleAffected,
+        roadBlocked: roadStatus === 'Blocked'
+      });
+      setAiTriage(res);
+    } catch {
+      // Handled
+    } finally {
+      setIsAnalyzingTriage(false);
+    }
+  };
 
   const issueTypes: IssueType[] = [
     'Land Cracks',
@@ -528,6 +555,82 @@ export const IncidentReportingPage: React.FC<IncidentReportingPageProps> = ({
               </div>
             </div>
           )}
+
+          {/* AI Instant Triage & Damage Assessment (Powered by Gemini 2.5 Flash) */}
+          <div className="p-4 rounded-xl bg-gradient-to-br from-slate-900 via-slate-900 to-cyan-950/40 border border-cyan-500/30 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-cyan-400" />
+                <span className="text-xs font-bold text-white uppercase tracking-wide">
+                  Gemini 2.5 Flash Hazard Triage
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={handleRunAiTriage}
+                disabled={isAnalyzingTriage}
+                className="px-3 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                {isAnalyzingTriage ? (
+                  <>
+                    <Bot className="w-3.5 h-3.5 animate-spin" />
+                    <span>Analyzing Triage...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Run AI Triage Assessment</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {aiTriage ? (
+              <div className="space-y-2.5 pt-2 border-t border-slate-800 text-xs animate-fadeIn">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-400">Assessed Threat:</span>
+                    <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
+                      aiTriage.assessedSeverity === 'Critical' ? 'bg-red-500/20 text-red-300 border border-red-500/40' :
+                      aiTriage.assessedSeverity === 'High' ? 'bg-orange-500/20 text-orange-300 border border-orange-500/40' :
+                      'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                    }`}>
+                      {aiTriage.assessedSeverity} Hazard
+                    </span>
+                  </div>
+                  <span className="text-cyan-400 font-mono text-[11px]">
+                    AI Confidence: {aiTriage.confidenceScore}%
+                  </span>
+                </div>
+
+                <div className="bg-slate-950/80 p-2.5 rounded-lg border border-slate-800">
+                  <span className="text-slate-400 block mb-1 font-semibold">Immediate Tactical Protocol:</span>
+                  <ul className="list-disc list-inside space-y-0.5 text-slate-200">
+                    {aiTriage.immediateActions.map((act, i) => (
+                      <li key={i}>{act}</li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="flex flex-wrap gap-1.5">
+                  <span className="text-slate-400 mr-1">Recommended Units:</span>
+                  {aiTriage.recommendedUnits.map((u, i) => (
+                    <span key={i} className="px-2 py-0.5 rounded bg-blue-900/40 text-blue-200 border border-blue-700/50 text-[10px] font-mono">
+                      {u}
+                    </span>
+                  ))}
+                </div>
+
+                <p className="text-[11px] text-cyan-300/90 italic bg-cyan-950/20 p-2 rounded border border-cyan-900/40">
+                  "{aiTriage.publicAdvisory}"
+                </p>
+              </div>
+            ) : (
+              <p className="text-[11px] text-slate-400">
+                Click <strong className="text-cyan-300">Run AI Triage Assessment</strong> to evaluate shear hazard, verify road cut severity, and generate instant dispatch recommendations before transmission.
+              </p>
+            )}
+          </div>
 
           <button
             type="submit"

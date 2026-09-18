@@ -10,6 +10,8 @@ import { Navbar } from './components/Navbar';
 import { Sidebar } from './components/Sidebar';
 import { ExplainabilityModal } from './components/ExplainabilityModal';
 import { BroadcastAlertModal } from './components/BroadcastAlertModal';
+import { AICopilotModal } from './components/AICopilotModal';
+import { Sparkles } from 'lucide-react';
 
 // Pages
 import { LandingPage } from './pages/LandingPage';
@@ -166,6 +168,7 @@ const MainApp: React.FC = () => {
   const [explainabilityLocation, setExplainabilityLocation] = useState<LocationData | null>(null);
   const [broadcastTargetLocation, setBroadcastTargetLocation] = useState<LocationData | null>(null);
   const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState<boolean>(false);
+  const [isCopilotOpen, setIsCopilotOpen] = useState<boolean>(false);
 
   // Initial Data Fetch
   useEffect(() => {
@@ -406,47 +409,67 @@ const MainApp: React.FC = () => {
     }
   };
 
-  // If on Landing or Login page, render full screen without dashboard shell
-  if (currentPage === 'landing' || currentPage === 'login') {
-    return (
-      <div className="min-h-screen bg-[#071324]">
-        {renderContent()}
-      </div>
-    );
-  }
-
-  // Dashboard Shell
+  // Main App Layout
   return (
     <div className="min-h-screen bg-[#071324] flex flex-col">
-      <Navbar
-        selectedState={selectedState}
-        onSelectState={st => setSelectedState(st)}
-        searchQuery={searchQuery}
-        onSearchChange={q => setSearchQuery(q)}
-        alerts={alerts}
-        onOpenAlerts={() => setCurrentPage('alerts')}
-        onNavigate={p => setCurrentPage(p)}
-        isOnline={isOnline}
-        onToggleOnline={() => setIsOnline(!isOnline)}
-        offlineCount={offlineQueueCount}
-      />
+      {currentPage === 'landing' || currentPage === 'login' ? (
+        renderContent()
+      ) : (
+        <>
+          <Navbar
+            selectedState={selectedState}
+            onSelectState={st => setSelectedState(st)}
+            searchQuery={searchQuery}
+            onSearchChange={q => setSearchQuery(q)}
+            alerts={alerts}
+            onOpenAlerts={() => setCurrentPage('alerts')}
+            onNavigate={p => setCurrentPage(p)}
+            isOnline={isOnline}
+            onToggleOnline={() => setIsOnline(!isOnline)}
+            offlineCount={offlineQueueCount}
+            onOpenCopilot={() => setIsCopilotOpen(true)}
+          />
 
-      <div className="flex-1 flex overflow-hidden">
-        <Sidebar
-          currentPage={currentPage}
-          onNavigate={p => setCurrentPage(p)}
-          collapsed={sidebarCollapsed}
-          onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-          activeAlertsCount={activeAlertsCount}
-          pendingIncidentsCount={pendingIncidentsCount}
-        />
+          <div className="flex-1 flex overflow-hidden">
+            <Sidebar
+              currentPage={currentPage}
+              onNavigate={p => setCurrentPage(p)}
+              collapsed={sidebarCollapsed}
+              onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+              activeAlertsCount={activeAlertsCount}
+              pendingIncidentsCount={pendingIncidentsCount}
+            />
 
-        <main className="flex-1 overflow-y-auto px-4 py-6 md:px-8 bg-[#071324]">
-          <div className="max-w-7xl mx-auto">
-            {renderContent()}
+            <main className="flex-1 overflow-y-auto px-4 py-6 md:px-8 bg-[#071324]">
+              <div className="max-w-7xl mx-auto">
+                {renderContent()}
+              </div>
+            </main>
           </div>
-        </main>
-      </div>
+        </>
+      )}
+
+      {/* Floating AI Copilot Trigger */}
+      <button
+        onClick={() => setIsCopilotOpen(true)}
+        className="fixed bottom-6 right-6 z-40 flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold text-xs shadow-2xl shadow-cyan-500/30 border border-cyan-400/40 transition-all hover:scale-105 group"
+        title="Open NER-WATCH AI Copilot (Powered by Gemini 2.5 Flash)"
+      >
+        <Sparkles className="w-4 h-4 text-cyan-200 animate-spin" />
+        <span className="tracking-wide">AI Copilot</span>
+        <span className="flex h-2 w-2 relative">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
+        </span>
+      </button>
+
+      {/* AI Disaster Copilot Modal */}
+      <AICopilotModal
+        isOpen={isCopilotOpen}
+        onClose={() => setIsCopilotOpen(false)}
+        currentLocationContext={locations[0]?.name}
+        currentRiskScore={locations[0]?.risk_score}
+      />
 
       {/* Explainable AI Modal */}
       {explainabilityLocation && (

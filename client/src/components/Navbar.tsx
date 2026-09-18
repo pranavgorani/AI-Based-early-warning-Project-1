@@ -18,7 +18,8 @@ import {
   ChevronDown,
   AlertTriangle,
   Layers,
-  MapPin
+  MapPin,
+  Sparkles
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -32,6 +33,7 @@ interface NavbarProps {
   isOnline?: boolean;
   onToggleOnline?: () => void;
   offlineCount?: number;
+  onOpenCopilot?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -44,7 +46,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onNavigate,
   isOnline = true,
   onToggleOnline,
-  offlineCount = 0
+  offlineCount = 0,
+  onOpenCopilot
 }) => {
   const { user, logout, switchRole } = useAuth();
   const { language, setLanguage, t } = useLanguage();
@@ -172,6 +175,19 @@ export const Navbar: React.FC<NavbarProps> = ({
               </span>
             )}
           </button>
+
+          {/* AI Copilot Button */}
+          {onOpenCopilot && (
+            <button
+              onClick={onOpenCopilot}
+              className="flex items-center gap-1.5 px-3 py-1 rounded-xl text-[11px] font-bold bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/30 transition-all shadow-sm group"
+              title="Open NER-WATCH AI Copilot (Gemini 2.5 Flash)"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-cyan-400 group-hover:rotate-12 transition-transform" />
+              <span className="hidden md:inline">AI Copilot</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping"></span>
+            </button>
+          )}
 
           {/* Language Switcher */}
           <div className="relative">
