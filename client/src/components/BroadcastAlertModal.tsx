@@ -44,6 +44,9 @@ export const BroadcastAlertModal: React.FC<BroadcastAlertModalProps> = ({
   const [regionalTranslation, setRegionalTranslation] = useState<string>(
     'चेतावनी: पहाड़ी ढलानों पर भारी भूस्खलन का खतरा। सुरक्षित आश्रयों में जाएं।'
   );
+  const [marathiTranslation, setMarathiTranslation] = useState<string>(
+    'इशारा: डोंगराळ उतारांवर दरड कोसळण्याचा मोठा धोका निर्माण झाला आहे. सुरक्षित निवारा केंद्रात जा.'
+  );
   const [channels, setChannels] = useState<string[]>(['SMS', 'Mobile Push', 'WhatsApp', 'Local Siren']);
   const [targetGroup, setTargetGroup] = useState('All Residents, District Officials & Transport Operators');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -70,6 +73,7 @@ export const BroadcastAlertModal: React.FC<BroadcastAlertModalProps> = ({
 
       if (res.english) setMessage(res.english);
       if (res.regional) setRegionalTranslation(res.regional);
+      if (res.marathi) setMarathiTranslation(res.marathi);
     } catch {
       // Handled in service fallback
     } finally {
@@ -83,7 +87,7 @@ export const BroadcastAlertModal: React.FC<BroadcastAlertModalProps> = ({
     try {
       const created = await api.broadcastAlert({
         title,
-        message: `${message} [Hindi/Regional: ${regionalTranslation}]`,
+        message: `${message}\n[Hindi]: ${regionalTranslation}\n[Marathi]: ${marathiTranslation}`,
         severity,
         alert_type: 'Landslide Risk Alert',
         location: location ? location.name : 'NER Hill Sector',
@@ -211,13 +215,26 @@ export const BroadcastAlertModal: React.FC<BroadcastAlertModalProps> = ({
             <div>
               <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
                 <Globe className="w-3.5 h-3.5 text-cyan-400" />
-                Regional / Hindi Broadcast Text (Disaster Cell)
+                Hindi Broadcast Text (Disaster Cell)
               </label>
               <textarea
                 value={regionalTranslation}
                 onChange={e => setRegionalTranslation(e.target.value)}
                 rows={2}
                 className="w-full px-3.5 py-2 bg-slate-950/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                <Globe className="w-3.5 h-3.5 text-emerald-400" />
+                Marathi Broadcast Text (मराठी आपत्कालीन संदेश)
+              </label>
+              <textarea
+                value={marathiTranslation}
+                onChange={e => setMarathiTranslation(e.target.value)}
+                rows={2}
+                className="w-full px-3.5 py-2 bg-slate-950/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
               />
             </div>
 

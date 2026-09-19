@@ -1,8 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { LocationData, SensorData, Incident, Alert, Road, AnalyticsSummary } from '../types';
 import { KPICard } from '../components/KPICard';
-import { LeafletMap } from '../components/LeafletMap';
+import { RiskMap } from '../components/RiskMap';
 import { RiskBadge } from '../components/RiskBadge';
+import { api } from '../services/api';
 import {
   AlertTriangle,
   Radio,
@@ -62,6 +63,30 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({
   onNavigate
 }) => {
   const [selectedLoc, setSelectedLoc] = useState<LocationData | null>(null);
+  const [liveWeather, setLiveWeather] = useState<any>(null);
+  const [demoRunning, setDemoRunning] = useState(false);
+  const [demoNotice, setDemoNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    api.getWeatherCurrent().then(w => {
+      if (w) setLiveWeather(w);
+    });
+  }, []);
+
+  const handleRunDemoScenario = async () => {
+    setDemoRunning(true);
+    try {
+      const res = await api.triggerDemoScenario();
+      if (res) {
+        setDemoNotice(`Demo Triggered: Heavy Rain in ${res.affectedLocation?.name} (Risk: ${res.affectedLocation?.risk_score}/100 CRITICAL). Multilingual Emergency Alert Broadcasted!`);
+        setTimeout(() => setDemoNotice(null), 8000);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setDemoRunning(false);
+    }
+  };
 
   // Panel 3 Forecast Tabs: 24h, 48h, 72h
   const [forecastTab, setForecastTab] = useState<'24h' | '48h' | '72h'>('24h');
@@ -187,6 +212,83 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({
         </div>
       </div>
 
+      {/* Live Weather Intelligence HUD & Demo Mode Notification */}
+      <div className="space-y-3">
+        {/* Live Weather Source Strip */}
+        <div className="p-3.5 rounded-2xl bg-gradient-to-r from-blue-950/60 via-slate-900/80 to-slate-950 border border-blue-500/30 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-blue-500/20 text-blue-400 border border-blue-500/30">
+              <Droplets className="w-5 h-5 animate-pulse" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-extrabold text-white">
+                  {liveWeather?.response?.station_name || 'IMD Regional Doppler Radar Centre, Guwahati'}
+                </span>
+                <span className="text-[10px] font-black px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/40">
+                  {liveWeather?.source || 'IMD Doppler Radar Telemetry'}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                {liveWeather?.response?.weather_condition || 'Heavy Rain Showers'} • Temp: {liveWeather?.response?.temperature ?? 20}°C (Feels like {liveWeather?.response?.feels_like ?? 22}°C) • Rainfall Rate: {liveWeather?.response?.rainfall_intensity ?? 32.4} mm/hr • Humidity: {liveWeather?.response?.humidity ?? 94}%
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="text-right hidden sm:block">
+              <span className="text-[10px] text-slate-400 block font-mono">Last Synchronized:</span>
+              <span className="text-[11px] font-bold text-cyan-400 font-mono">
+                {liveWeather?.timestamp ? new Date(liveWeather.timestamp).toLocaleTimeString() : 'Live'}
+              </span>
+            </div>
+            <button
+              onClick={() => onNavigate('weather')}
+              className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all border border-slate-700"
+            >
+              Weather Matrix →
+            </button>
+          </div>
+        </div>
+
+        {/* Demo Mode Interactive Banner */}
+        <div className="px-4 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div className="flex items-center gap-2 text-amber-300">
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+            <span className="font-bold uppercase tracking-wider text-[11px]">
+              DEMO MODE ACTIVE (Hackathon Scenario)
+            </span>
+            <span className="text-slate-400 text-[11px] hidden sm:inline">
+              Simulate cloudburst → saturation → critical risk → Gemini multilingual alert → safe emergency detour
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleRunDemoScenario}
+              disabled={demoRunning}
+              className="px-3 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition-all shadow-md shadow-amber-500/20 flex items-center gap-1.5"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>{demoRunning ? 'Simulating Cascade...' : 'Simulate Landslide Trigger'}</span>
+            </button>
+            <button
+              onClick={() => onNavigate('api-health')}
+              className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold"
+            >
+              API Health & Costs
+            </button>
+          </div>
+        </div>
+
+        {demoNotice && (
+          <div className="p-3 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold flex items-center gap-2 animate-fadeIn">
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
+            <span>{demoNotice}</span>
+          </div>
+        )}
+      </div>
+
       {/* KPI Cards Row */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         <KPICard
@@ -269,7 +371,7 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({
           </button>
         </div>
 
-        <LeafletMap
+        <RiskMap
           locations={locations}
           sensors={sensors}
           incidents={incidents}

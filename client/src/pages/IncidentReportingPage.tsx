@@ -73,6 +73,36 @@ export const IncidentReportingPage: React.FC<IncidentReportingPageProps> = ({
   const [aiTriage, setAiTriage] = useState<AITriageResult | null>(null);
   const [isAnalyzingTriage, setIsAnalyzingTriage] = useState(false);
 
+  // Gemini Vision Verification State (Requirement 8)
+  const [visionVerification, setVisionVerification] = useState<any>(null);
+  const [isVerifyingVision, setIsVerifyingVision] = useState(false);
+
+  const handleVerifyImageWithVision = async (imgData?: string) => {
+    const targetImg = imgData || uploadedImage;
+    if (!targetImg) return;
+    setIsVerifyingVision(true);
+    try {
+      const res = await api.verifyReport(targetImg);
+      setVisionVerification(res);
+      if (res.severity) {
+        // Map to valid severity
+        const s = res.severity;
+        if (s === 'Critical' || s === 'High' || s === 'Moderate' || s === 'Low') {
+          setSeverity(s);
+        } else if (s === 'Severe') {
+          setSeverity('Critical');
+        }
+      }
+      if (res.damageType && res.damageType.includes('road')) {
+        setRoadStatus('Blocked');
+      }
+    } catch (err) {
+      console.error('Vision verification failed:', err);
+    } finally {
+      setIsVerifyingVision(false);
+    }
+  };
+
   const handleRunAiTriage = async () => {
     setIsAnalyzingTriage(true);
     try {
@@ -374,11 +404,24 @@ export const IncidentReportingPage: React.FC<IncidentReportingPageProps> = ({
                     className="w-full h-28 object-cover rounded-lg border border-slate-700"
                   />
                 )}
-                <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 transition-colors">
-                  <Upload className="w-3.5 h-3.5" />
-                  <span>Choose Photo</span>
-                  <input type="file" accept="image/*" onChange={handleImageFileChange} className="hidden" />
-                </label>
+                <div className="flex items-center justify-center gap-2">
+                  <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 transition-colors">
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Choose Photo</span>
+                    <input type="file" accept="image/*" onChange={handleImageFileChange} className="hidden" />
+                  </label>
+                  {uploadedImage && (
+                    <button
+                      type="button"
+                      onClick={() => handleVerifyImageWithVision()}
+                      disabled={isVerifyingVision}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-600/30 hover:bg-cyan-600/50 text-cyan-300 border border-cyan-500/40 text-xs font-bold transition-colors disabled:opacity-50"
+                    >
+                      <Sparkles className={`w-3.5 h-3.5 ${isVerifyingVision ? 'animate-spin' : ''}`} />
+                      <span>{isVerifyingVision ? 'Verifying...' : 'Verify with Vision AI'}</span>
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -405,6 +448,52 @@ export const IncidentReportingPage: React.FC<IncidentReportingPageProps> = ({
               </div>
             </div>
           </div>
+
+          {/* Gemini Vision Structured Assessment Card (Requirement 8) */}
+          {visionVerification && (
+            <div className="p-4 rounded-xl bg-slate-900/90 border border-cyan-500/40 space-y-3 animate-fadeIn">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-cyan-400" />
+                  <span className="text-xs font-black text-white uppercase tracking-wider">
+                    Gemini Vision Hazard Verification Matrix
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                    visionVerification.verified
+                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                      : 'bg-red-500/20 text-red-300 border border-red-500/30'
+                  }`}>
+                    {visionVerification.verified ? 'GENUINE LANDSLIDE VERIFIED' : 'UNVERIFIED HAZARD'}
+                  </span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                    Confidence: {visionVerification.confidence}%
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800">
+                  <span className="text-[10px] font-bold uppercase text-slate-400 block">Assessed Severity</span>
+                  <span className="text-xs font-black text-amber-300">{visionVerification.severity}</span>
+                </div>
+                <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800">
+                  <span className="text-[10px] font-bold uppercase text-slate-400 block">Identified Damage Type</span>
+                  <span className="text-xs font-black text-cyan-300">{visionVerification.damageType}</span>
+                </div>
+                <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800">
+                  <span className="text-[10px] font-bold uppercase text-slate-400 block">Human Review Status</span>
+                  <span className="text-xs font-bold text-red-400">Mandatory (Safety Protocol)</span>
+                </div>
+              </div>
+
+              <p className="text-xs text-slate-300 leading-relaxed bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80">
+                <strong className="text-white block mb-0.5">Vision AI Finding:</strong>
+                {visionVerification.description}
+              </p>
+            </div>
+          )}
 
           {/* Location & Auto GPS */}
           <div className="space-y-3">

@@ -18,7 +18,8 @@ import {
   ChevronLeft,
   ChevronRight,
   ShieldCheck,
-  AlertOctagon
+  AlertOctagon,
+  Server
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -55,6 +56,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'alerts', label: t('alerts'), icon: Bell, badge: activeAlertsCount > 0 ? String(activeAlertsCount) : null, badgeColor: 'bg-red-500' },
     { id: 'emergency-response', label: t('emergencyResponse'), icon: LifeBuoy, badge: 'NDRF' },
     { id: 'analytics', label: t('analytics'), icon: BarChart3, badge: null },
+    { id: 'api-health', label: 'API Health & Costs', icon: Server, badge: 'LIVE', badgeColor: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' },
     { id: 'architecture', label: t('architecture'), icon: ShieldCheck, badge: null },
     ...(user?.role === 'Super Admin' || user?.role === 'District Administration'
       ? [{ id: 'user-management', label: t('userManagement'), icon: Users, badge: null }]

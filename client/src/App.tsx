@@ -31,6 +31,7 @@ import { UserManagementPage } from './pages/UserManagementPage';
 import { SystemArchitecturePage } from './pages/SystemArchitecturePage';
 import { DataIntegrationPage } from './pages/DataIntegrationPage';
 import { OfflineSyncPage } from './pages/OfflineSyncPage';
+import { ApiHealthPage } from './pages/ApiHealthPage';
 
 // SPA Route to Page ID mapper
 const pathToPage = (pathname: string): string => {
@@ -82,6 +83,11 @@ const pathToPage = (pathname: string): string => {
       return 'emergency-response';
     case 'analytics':
       return 'analytics';
+    case 'api-health':
+    case 'health':
+    case 'costs':
+    case 'admin-health':
+      return 'api-health';
     case 'users':
     case 'settings':
     case 'user-management':
@@ -385,6 +391,9 @@ const MainApp: React.FC = () => {
 
       case 'analytics':
         return <AnalyticsPage analytics={analytics} />;
+
+      case 'api-health':
+        return <ApiHealthPage onNavigate={p => setCurrentPage(p)} />;
 
       case 'user-management':
         return <UserManagementPage />;

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState } from 'react';
 
-export type LanguageCode = 'en' | 'hi' | 'as' | 'bn' | 'kha' | 'miz' | 'mni' | 'ne';
+export type LanguageCode = 'en' | 'hi' | 'mr' | 'as' | 'bn' | 'kha' | 'miz' | 'mni' | 'ne';
 
 export interface LanguageInfo {
   code: LanguageCode;
@@ -11,6 +11,7 @@ export interface LanguageInfo {
 export const SUPPORTED_LANGUAGES: LanguageInfo[] = [
   { code: 'en', label: 'English', nativeLabel: 'English' },
   { code: 'hi', label: 'Hindi', nativeLabel: 'हिन्दी' },
+  { code: 'mr', label: 'Marathi', nativeLabel: 'मराठी' },
   { code: 'as', label: 'Assamese', nativeLabel: 'অসমীয়া' },
   { code: 'bn', label: 'Bengali', nativeLabel: 'বাংলা' },
   { code: 'kha', label: 'Khasi', nativeLabel: 'Khasi' },
@@ -87,6 +88,40 @@ const translations: Record<string, Record<string, string>> = {
     onlineMode: 'लाइव टेलीमेट्री कनेक्टेड',
     searchPlaceholder: 'क्षेत्र, राजमार्ग, सेंसर खोजें...',
     alertBanner: 'भारी वर्षा दर्ज की गई है। आपके क्षेत्र में भूस्खलन का खतरा अधिक है। सतर्क रहें और संवेदनशील ढलानों से बचें।'
+  },
+  mr: {
+    appTitle: 'एनईआर-वॉच एआय',
+    appTagline: 'लवचिक पूर्वोत्तरासाठी बुद्धिमान आपत्ती पूर्वतयारी',
+    ministry: 'उत्तर पूर्व क्षेत्र विकास मंत्रालय (MDoNER)',
+    launchDashboard: 'कमांड डॅशबोर्ड सुरू करा',
+    exploreRiskZones: 'थेट जोखीम नकाशा पहा',
+    dashboard: 'कमांड सेंटर',
+    liveMap: 'थेट जीआयएस जोखीम नकाशा',
+    aiPredictions: 'एआय अंदाज',
+    rainfallWeather: 'पाऊस आणि हवामान',
+    sensorMonitoring: 'सेन्सर बुद्धिमत्ता',
+    landslideReports: 'घटना नोंदणी',
+    incidentManagement: 'घटना व्यवस्थापन',
+    roadConnectivity: 'रस्ते व पायाभूत सुविधा',
+    alerts: 'इशारे आणि सूचना',
+    emergencyResponse: 'आपत्कालीन प्रतिसाद',
+    analytics: 'अहवाल आणि विश्लेषण',
+    userManagement: 'वापरकर्ता व्यवस्थापन',
+    architecture: 'प्रणाली रचना',
+    logout: 'साइन आउट',
+    activeHighRiskZones: 'सक्रिय उच्च-जोखीम क्षेत्रे',
+    criticalAlerts: 'गंभीर इशारे',
+    monitoredSensors: 'निरीक्षण सेन्सर्स',
+    affectedRoads: 'बाधित रस्ते',
+    rainfallRiskIndex: 'पाऊस जोखीम निर्देशांक',
+    aiPredictionConfidence: 'एआय अंदाज अचूकता',
+    whyAtRisk: 'हा भाग धोक्यात का आहे?',
+    runAiPrediction: 'एआय अंदाज चालवा',
+    submitReport: 'घटना अहवाल पाठवा',
+    offlineMode: 'ऑफलाइन मोड सक्रिय',
+    onlineMode: 'थेट टेलिमेमट्री जोडलेली आहे',
+    searchPlaceholder: 'परिसर, महामार्ग, सेन्सर्स शोधा...',
+    alertBanner: 'मुसळधार पाऊस नोंदवला गेला आहे. दरड कोसळण्याचा मोठा धोका आहे. सतर्क राहा आणि धोकादायक उतार टाळा.'
   },
   as: {
     appTitle: 'NER-WATCH AI',

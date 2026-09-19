@@ -16,7 +16,12 @@ import {
   AlertTriangle,
   ArrowRight,
   Flame,
-  X
+  X,
+  Sparkles,
+  Navigation,
+  FileText,
+  Compass,
+  RefreshCw
 } from 'lucide-react';
 
 interface EmergencyResponsePageProps {
@@ -36,6 +41,16 @@ export const EmergencyResponsePage: React.FC<EmergencyResponsePageProps> = ({
   const [targetIncidentId, setTargetIncidentId] = useState<string>(incidents[0]?.id || '');
   const [evacNotifSuccess, setEvacNotifSuccess] = useState<string | null>(null);
 
+  // Gemini Situation Summary State (Requirement 13)
+  const [situationSummary, setSituationSummary] = useState<any>(null);
+  const [loadingSummary, setLoadingSummary] = useState(false);
+
+  // Emergency Route Planning State (Requirement 12)
+  const [routePlan, setRoutePlan] = useState<any>(null);
+  const [loadingRoute, setLoadingRoute] = useState(false);
+  const [routeOrigin, setRouteOrigin] = useState('Guwahati (Base Hub)');
+  const [routeDest, setRouteDest] = useState('Tawang (Forward Sector)');
+
   // Priority Queue Ranking Algorithm based on:
   // (Population Affected * 0.35) + (Severity weight * 0.35) + (Road blocked status * 0.30)
   const rankedIncidents = [...incidents].sort((a, b) => {
@@ -45,6 +60,30 @@ export const EmergencyResponsePage: React.FC<EmergencyResponsePageProps> = ({
     const scoreB = b.people_affected * 0.05 + sevWeight(b.severity) * 0.5 + roadWeight(b.road_status) * 0.45;
     return scoreB - scoreA;
   });
+
+  const handleGenerateSituationSummary = async () => {
+    setLoadingSummary(true);
+    try {
+      const summary = await api.getExecutiveSummary();
+      setSituationSummary(summary);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingSummary(false);
+    }
+  };
+
+  const handleComputeEmergencyRoute = async () => {
+    setLoadingRoute(true);
+    try {
+      const plan = await api.getEmergencyRoute(routeOrigin, routeDest, true);
+      setRoutePlan(plan);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingRoute(false);
+    }
+  };
 
   const handleDispatchSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,14 +123,243 @@ export const EmergencyResponsePage: React.FC<EmergencyResponsePageProps> = ({
           </p>
         </div>
 
-        <button
-          onClick={onOpenBroadcast}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs shadow-lg shadow-amber-500/20 transition-all self-start md:self-auto"
-        >
-          <Radio className="w-3.5 h-3.5" />
-          <span>Regional Evacuation Siren</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={handleGenerateSituationSummary}
+            disabled={loadingSummary}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-xs shadow-lg shadow-purple-600/30 transition-all self-start md:self-auto"
+          >
+            <Sparkles className={`w-3.5 h-3.5 ${loadingSummary ? 'animate-spin' : ''}`} />
+            <span>{loadingSummary ? 'Synthesizing Telemetry...' : 'Generate Situation Summary'}</span>
+          </button>
+
+          <button
+            onClick={onOpenBroadcast}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs shadow-lg shadow-amber-500/20 transition-all self-start md:self-auto"
+          >
+            <Radio className="w-3.5 h-3.5" />
+            <span>Regional Evacuation Siren</span>
+          </button>
+        </div>
       </div>
+
+      {/* Gemini Operational Situation Summary Card (Requirement 13) */}
+      {situationSummary && (
+        <div className="p-5 rounded-2xl bg-gradient-to-r from-purple-950/50 via-slate-900 to-slate-950 border border-purple-500/40 space-y-4 shadow-xl animate-fadeIn">
+          <div className="flex items-center justify-between border-b border-purple-500/20 pb-3">
+            <div className="flex items-center gap-2.5">
+              <span className="p-1.5 rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                <Sparkles className="w-4 h-4" />
+              </span>
+              <div>
+                <h3 className="text-sm font-black text-white uppercase tracking-wider font-['Outfit']">
+                  Operational Situation Summary (Gemini Disaster Intelligence)
+                </h3>
+                <span className="text-[10px] text-purple-300">Generated strictly from multi-sensor & GIS telemetry</span>
+              </div>
+            </div>
+
+            <span className="text-[10px] font-mono text-slate-400">
+              Confidence: <strong className="text-emerald-400">{situationSummary.dataConfidence}</strong>
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+            <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                CURRENT SITUATION
+              </span>
+              <p className="text-slate-200 leading-relaxed font-medium">
+                {situationSummary.currentSituation}
+              </p>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                RISK ASSESSMENT
+              </span>
+              <p className="text-slate-200 leading-relaxed font-medium">
+                {situationSummary.riskAssessment}
+              </p>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                RECOMMENDED RESPONSE
+              </span>
+              <p className="text-slate-200 leading-relaxed font-medium">
+                {situationSummary.recommendedResponse}
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t border-slate-800/80 text-[11px]">
+            <div>
+              <span className="text-slate-400 font-bold block mb-1 uppercase text-[10px]">Major Contributing Factors:</span>
+              <ul className="space-y-1">
+                {situationSummary.majorContributingFactors?.map((fac: string, idx: number) => (
+                  <li key={idx} className="text-slate-300 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
+                    <span>{fac}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div>
+              <span className="text-slate-400 font-bold block mb-1 uppercase text-[10px]">Primary Vulnerable Locations:</span>
+              <div className="flex flex-wrap gap-1.5 mt-1">
+                {situationSummary.affectedLocations?.map((loc: string, idx: number) => (
+                  <span key={idx} className="px-2 py-0.5 rounded-md bg-red-500/10 text-red-300 border border-red-500/30 text-[10px] font-semibold">
+                    {loc}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Emergency Corridor & Safe Routing Engine (Requirement 12) */}
+      <div className="glass-panel rounded-2xl p-5 border border-cyan-500/30 bg-slate-900/60 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 flex items-center justify-center">
+              <Navigation className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+                Emergency Route Intelligence & Hazard Avoidance
+                <span className="text-[10px] px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-mono border border-cyan-500/40">
+                  TOPOLOGICAL RISK GRAPH / GOOGLE ROUTES
+                </span>
+              </h3>
+              <p className="text-[11px] text-slate-400">
+                Calculates risk-aware detours avoiding high-probability landslide slopes and road blockages across NER highway corridors.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handleComputeEmergencyRoute}
+            disabled={loadingRoute}
+            className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-black text-xs transition-all flex items-center gap-2 shadow-lg shadow-cyan-600/30 self-start sm:self-auto"
+          >
+            <Compass className={`w-3.5 h-3.5 ${loadingRoute ? 'animate-spin' : ''}`} />
+            <span>{loadingRoute ? 'Calculating Safe Vector...' : 'Compute Safe Route'}</span>
+          </button>
+        </div>
+
+        {/* Route Input Bar */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Origin / Dispatch Hub</label>
+            <input
+              type="text"
+              value={routeOrigin}
+              onChange={(e) => setRouteOrigin(e.target.value)}
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white font-medium focus:border-cyan-500 focus:outline-none"
+              placeholder="e.g., Guwahati Base Hub"
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Destination Incident Zone</label>
+            <input
+              type="text"
+              value={routeDest}
+              onChange={(e) => setRouteDest(e.target.value)}
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white font-medium focus:border-cyan-500 focus:outline-none"
+              placeholder="e.g., Tawang Forward Sector"
+            />
+          </div>
+          <div className="flex flex-col justify-end">
+            <div className="p-2 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center justify-between text-xs">
+              <span className="text-slate-300 font-bold text-[11px]">Dynamic Slope Hazard Avoidance</span>
+              <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono text-[10px] font-bold border border-emerald-500/30">
+                ACTIVE
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Route Output Results */}
+        {routePlan && (
+          <div className="p-4 rounded-xl bg-slate-950/90 border border-cyan-500/30 space-y-3 animate-fadeIn">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-black text-white">{routePlan.origin}</span>
+                <ArrowRight className="w-3.5 h-3.5 text-cyan-400" />
+                <span className="text-xs font-black text-white">{routePlan.destination}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300">
+                  Engine: {routePlan.routingEngine}
+                </span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">
+                  {routePlan.status}
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+              <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+                <span className="text-slate-400 text-[10px] uppercase font-bold block">Total Distance</span>
+                <span className="text-lg font-black text-white">{routePlan.distanceKm} km</span>
+              </div>
+              <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+                <span className="text-slate-400 text-[10px] uppercase font-bold block">Estimated Transit ETA</span>
+                <span className="text-lg font-black text-cyan-300">{Math.floor(routePlan.durationMinutes / 60)}h {routePlan.durationMinutes % 60}m</span>
+              </div>
+              <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+                <span className="text-slate-400 text-[10px] uppercase font-bold block">Risk Exposure Score</span>
+                <span className="text-lg font-black text-emerald-400">{routePlan.riskExposureScore} / 100</span>
+              </div>
+              <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+                <span className="text-slate-400 text-[10px] uppercase font-bold block">Corridor Safety Status</span>
+                <span className="text-xs font-bold text-amber-300 mt-1 block truncate">
+                  {routePlan.hazardAvoided ? 'Active Detour Selected' : 'Direct Corridor'}
+                </span>
+              </div>
+            </div>
+
+            {routePlan.hazardSegmentsAvoided?.length > 0 && (
+              <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-200">
+                <strong className="text-amber-400 uppercase font-black mr-2">Hazards Bypassed:</strong>
+                {routePlan.hazardSegmentsAvoided.join(', ')}
+              </div>
+            )}
+
+            {/* Waypoint Milestones */}
+            <div className="space-y-1.5 pt-1">
+              <span className="text-[10px] font-bold uppercase text-slate-400 block">Corridor Tactical Waypoints:</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
+                {routePlan.waypoints?.map((wp: any, idx: number) => (
+                  <div key={idx} className="p-2 rounded-lg bg-slate-900/80 border border-slate-800 flex items-center justify-between text-[11px]">
+                    <div>
+                      <span className="text-slate-200 font-bold block truncate">{wp.name}</span>
+                      <span className="text-[9px] font-mono text-slate-500">{wp.lat?.toFixed(2)}°N, {wp.lng?.toFixed(2)}°E</span>
+                    </div>
+                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                      wp.status === 'Clear'
+                        ? 'bg-emerald-500/20 text-emerald-300'
+                        : wp.status === 'Monitoring'
+                        ? 'bg-cyan-500/20 text-cyan-300'
+                        : 'bg-amber-500/20 text-amber-300'
+                    }`}>
+                      {wp.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="p-2 rounded-lg bg-cyan-950/40 border border-cyan-800/40 text-[11px] text-cyan-200 flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0" />
+              <span>{routePlan.safetyAdvisory}</span>
+            </div>
+          </div>
+        )}
+      </div>
+
 
       {evacNotifSuccess && (
         <div className="p-4 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold flex items-center justify-between animate-fadeIn">

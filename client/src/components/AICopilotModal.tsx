@@ -12,7 +12,7 @@ import {
   CheckCircle2,
   ExternalLink
 } from 'lucide-react';
-import { geminiService, getActiveGeminiKey, setCustomGeminiKey } from '../services/geminiService';
+import { geminiService } from '../services/geminiService';
 
 interface Message {
   id: string;
@@ -44,20 +44,11 @@ export const AICopilotModal: React.FC<AICopilotModalProps> = ({
   ]);
   const [inputQuery, setInputQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [showKeySettings, setShowKeySettings] = useState(false);
-  const [customKeyInput, setCustomKeyInput] = useState('');
-  const [keySaved, setKeySaved] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
-
-  useEffect(() => {
-    if (showKeySettings) {
-      setCustomKeyInput(getActiveGeminiKey());
-    }
-  }, [showKeySettings]);
 
   if (!isOpen) return null;
 
@@ -105,15 +96,6 @@ export const AICopilotModal: React.FC<AICopilotModalProps> = ({
     }
   };
 
-  const handleSaveKey = () => {
-    setCustomGeminiKey(customKeyInput);
-    setKeySaved(true);
-    setTimeout(() => {
-      setKeySaved(false);
-      setShowKeySettings(false);
-    }, 1200);
-  };
-
   const quickPrompts = [
     '🚨 Evacuation advice for Tawang NH-13 block',
     '🌧️ Analyze Cherrapunji 24h rainfall & pore pressure',
@@ -145,13 +127,6 @@ export const AICopilotModal: React.FC<AICopilotModalProps> = ({
 
           <div className="flex items-center gap-1.5">
             <button
-              onClick={() => setShowKeySettings(!showKeySettings)}
-              className="p-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-cyan-400 transition-colors border border-slate-700"
-              title="API Key Configuration"
-            >
-              <Key className="w-4 h-4" />
-            </button>
-            <button
               onClick={() => setMessages([messages[0]])}
               className="p-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-amber-400 transition-colors border border-slate-700"
               title="Reset Chat"
@@ -166,33 +141,6 @@ export const AICopilotModal: React.FC<AICopilotModalProps> = ({
             </button>
           </div>
         </div>
-
-        {/* Optional Key Settings Drawer */}
-        {showKeySettings && (
-          <div className="bg-slate-900 border-b border-cyan-500/30 p-4 animate-fadeIn">
-            <div className="flex items-center justify-between mb-2">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
-                <Key className="w-3.5 h-3.5" /> Gemini API Key Configuration
-              </h4>
-              <span className="text-[10px] text-slate-400">Stored safely in client storage</span>
-            </div>
-            <div className="flex gap-2">
-              <input
-                type="password"
-                value={customKeyInput}
-                onChange={e => setCustomKeyInput(e.target.value)}
-                placeholder="AQ... or AIzaSy..."
-                className="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs font-mono text-cyan-300 focus:outline-none focus:border-cyan-500"
-              />
-              <button
-                onClick={handleSaveKey}
-                className="px-3 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-1"
-              >
-                {keySaved ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300" /> : 'Save Key'}
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Chat Message Stream */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">

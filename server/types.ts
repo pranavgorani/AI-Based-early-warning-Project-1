@@ -149,3 +149,19 @@ export interface EmergencyTeam {
   eta_minutes: number;
   contact_number: string;
 }
+
+export interface LandslideIncident {
+  id: string;
+  location: string;
+  latitude: number;
+  longitude: number;
+  date: string;
+  severity: 'Low' | 'Moderate' | 'High' | 'Critical';
+  cause: string;
+  rainfall: number; // mm in 24h
+  damage: string;
+  source: 'GSI Landslide Inventory' | 'NDMA Historical Archive' | 'State SEOC Record' | 'Citizen Verified';
+  verified: boolean;
+  images: string[];
+  createdAt: string;
+}
